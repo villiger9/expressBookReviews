@@ -31,64 +31,115 @@ public_users.post("/register", (req, res) => {
 
 
 // Get the book list available in the shop
-public_users.get('/', function (req, res) {
-    return res.status(200).send(JSON.stringify(books, null, 4));
-  });
+// Simulated promise-based delay function
+function promiseCb(cb, delay) {
+	return new Promise((resolve) => {
+		setTimeout(() => cb(resolve), delay);
+	});
+}
+
+public_users.get('/', async function (req, res) {
+	try {
+		const data = await promiseCb((resolve) => {
+			const booksList = Object.values(books);
+			resolve(booksList);
+		}, 3000); // Simulates async delay
+
+		return res.status(200).json(data);
+	} catch (error) {
+		return res.status(500).json({ message: "Internal server error" });
+	}
+});
+
 
 // Get book details based on ISBN
-public_users.get('/isbn/:isbn', function (req, res) {
-    // Get the ISBN from the request parameters
-    const isbn = req.params.isbn;
-  
-    // Look up the book in the books object
-    const book = books[isbn];
-  
-    // Check if the book exists
-    if (book) {
+// Simulate an async operation with a delay
+function findBookByISBN(isbn, delay = 1000) {
+  return new Promise((resolve, reject) => {
+      setTimeout(() => {
+          const book = books[isbn];
+          if (book) {
+              resolve(book);
+          } else {
+              reject(new Error("Book not found for the given ISBN."));
+          }
+      }, delay);
+  });
+}
+
+public_users.get('/isbn/:isbn', async (req, res) => {
+  const isbn = req.params.isbn;
+
+  try {
+      const book = await findBookByISBN(isbn);
       return res.status(200).json(book);
-    } else {
-      return res.status(404).json({ message: "Book not found for the given ISBN." });
-    }
+  } catch (error) {
+      return res.status(404).json({ message: error.message });
+  }
+});
+
+  
+  
+// Simulate an async function to fetch books by author
+function findBooksByAuthor(author, delay = 1000) {
+  return new Promise((resolve) => {
+      setTimeout(() => {
+          const bookKeys = Object.keys(books);
+          const matchingBooks = bookKeys
+              .filter(key => books[key].author.toLowerCase() === author.toLowerCase())
+              .map(key => ({ isbn: key, ...books[key] }));
+
+          resolve(matchingBooks);
+      }, delay);
   });
-  
-  
-// Get book details based on author
-public_users.get('/author/:author', function (req, res) {
-    const author = req.params.author;
-  
-    // Get all book keys (ISBNs)
-    const bookKeys = Object.keys(books);
-  
-    // Filter books by matching author
-    const matchingBooks = bookKeys
-      .filter(key => books[key].author.toLowerCase() === author.toLowerCase())
-      .map(key => ({ isbn: key, ...books[key] }));
-  
-    if (matchingBooks.length > 0) {
-      return res.status(200).json(matchingBooks);
-    } else {
-      return res.status(404).json({ message: "No books found for the given author." });
-    }
-  });
+}
+
+public_users.get('/author/:author', async (req, res) => {
+  const author = req.params.author;
+
+  try {
+      const matchingBooks = await findBooksByAuthor(author);
+
+      if (matchingBooks.length > 0) {
+          return res.status(200).json(matchingBooks);
+      } else {
+          return res.status(404).json({ message: "No books found for the given author." });
+      }
+  } catch (error) {
+      return res.status(500).json({ message: "Internal server error" });
+  }
+});
+
   
 
 // Get all books based on title
-public_users.get('/title/:title',function (req, res) {
-    const title = req.params.title;
-    const bookKeys = Object.keys(books);
-    let matchedBooks = [];
+function findBooksByTitle(title, delay = 1000) {
+  return new Promise((resolve) => {
+      setTimeout(() => {
+          const bookKeys = Object.keys(books);
+          const matchedBooks = bookKeys
+              .filter(key => books[key].title.toLowerCase() === title.toLowerCase())
+              .map(key => ({ isbn: key, ...books[key] }));
 
-    bookKeys.forEach(key => {
-        if (books[key].title.toLowerCase() === title.toLowerCase()) {
-            matchedBooks.push({ isbn: key, ...books[key] });
-        }
-    });
+          resolve(matchedBooks);
+      }, delay);
+  });
+}
 
-    if (matchedBooks.length > 0) {
-        return res.status(200).json(matchedBooks);
-    } else {
-        return res.status(404).json({ message: "No books found with the given title." });
-    }
+public_users.get('/title/:title', async (req, res) => {
+  const title = req.params.title;
+
+  try {
+      const matchedBooks = await findBooksByTitle(title);
+
+      if (matchedBooks.length > 0) {
+          return res.status(200).json(matchedBooks);
+      } else {
+          return res.status(404).json({ message: "No books found with the given title." });
+      }
+  } catch (error) {
+      return res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 
